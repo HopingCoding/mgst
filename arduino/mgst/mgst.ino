@@ -1,6 +1,8 @@
-const int _buttonCount = 8;
+static const int _buttonCount = 8;
+static const int _lampModeCount = 5;
 
-enum Button {
+enum Button 
+{
   Start = 0,
   Autostart = 1,
   SelectGame = 2,
@@ -10,7 +12,11 @@ enum Button {
   Payout = 6,
   Service = 7
 };
-
+enum ButtonMode 
+{
+  Down = 0,
+  Up = 1
+};
 enum LampMode
 {
   Off = 0,
@@ -20,12 +26,10 @@ enum LampMode
   BlinkFast = 4
 };
 
-byte _firstByte = -1;
-
 boolean buttonState[_buttonCount];
 LampMode lampState[_buttonCount];
 
-int button2ButtonPin(Button button)
+int button2ButtonPin(const Button button)
 {
   switch (button)
   {
@@ -40,7 +44,7 @@ int button2ButtonPin(Button button)
   }
 }
 
-int button2LedPin(Button button)
+int button2LedPin(const Button button)
 {
   return button + 2;
 }
@@ -51,13 +55,13 @@ void setup()
 
   for (int i = 0; i < _buttonCount; i++)
   {
-    buttonState[i] = false;
+    buttonState[i] = Up;
     lampState[i] = Off;
 
-    int ledPin = button2LedPin(i);
+    const int ledPin = button2LedPin(i);
     pinMode(ledPin, OUTPUT);
 
-    int buttonPin = button2ButtonPin(i);
+    const int buttonPin = button2ButtonPin(i);
     pinMode(buttonPin, INPUT_PULLUP);
   }
 }
@@ -73,21 +77,13 @@ void checkSerial()
 {
   while (Serial.available())
   {
-    byte b = Serial.read();
-    processByte(b);
-  }
-}
-
-void processByte(byte b)
-{
-  if (_firstByte != -1)
-  {
-    if (b == 'l')
+    const byte b = Serial.read();
+    if (b >= 0 && b <_buttonCount * _lampModeCount)
     {
-
+      const Button button = b / _lampModeCount;
+      const LampMode lampMode = b % _lampModeCount;
+      lampState[button] = lampMode;
     }
-    Button button = _firstByte;
-    int led = button2LedPin(button);
   }
 }
 
@@ -95,26 +91,26 @@ void checkButtons()
 {
   for (int i = 0; i < _buttonCount; i++)
   {
-    int sensorValue = digitalRead(button2ButtonPin(i));
-    boolean down = sensorValue == HIGH;
-    if (buttonState[i] != down)
+    const int sensorValue = digitalRead(button2ButtonPin(i));
+    const ButtonMode buttonMode = sensorValue == HIGH ? Down : Up;
+
+    if (buttonState[i] != buttonMode)
     {
-      buttonState[i] = down;
-      Serial.write(i);
-      lampState[i] = On;
+      buttonState[i] = buttonMode;
+      const byte b = buttonMode == Down ? i : i + 8;
+      Serial.write(b);
     }
   }
 }
 
 void applyLamps()
 {
-  bool blinkSlow = millis() % 1000 > 0;
-  bool blinkMedium = millis() % 1000 > 0;
-  bool blinkFast = millis() % 1000 > 0;
+  const bool blinkSlow = millis() % 1000 < 500;
+  const bool blinkMedium = millis() % 500 < 250;
+  const bool blinkFast = millis() % 250 < 125;
 
   for (int i = 0; i < _buttonCount; i++)
   {
-    int pin = button2LedPin(i);
     bool on = LOW;
     switch (lampState[i])
     {
@@ -135,6 +131,7 @@ void applyLamps()
         break;
     }
 
+    const int pin = button2LedPin(i);
     digitalWrite(pin, on);
   }
 }
