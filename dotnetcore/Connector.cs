@@ -6,33 +6,36 @@ using System.Threading;
 
 namespace SerialServer
 {
-    class Connector
+    class Connector : IDisposable
     {
         bool _connected = false;
         SerialPort _serialPort;
 
-        public Connector(string comport)
+        public Connector()
         {
-            _serialPort = new SerialPort
-            {
-                PortName = comport,
-                BaudRate = 9600
-            };
         }
 
 
-        public void Connect()
+        public void Connect(string comPort)
         {
+            _serialPort = new SerialPort
+            {
+                PortName = comPort,
+                BaudRate = 9600
+            };
+
             Console.WriteLine($"Connecting on {_serialPort.PortName}");
             while (!_connected)
             {
                 try
                 {
                     _serialPort.Open();
+                    _serialPort.DiscardInBuffer();
+                    _serialPort.DiscardOutBuffer();
                     Console.WriteLine("Connected!");
                     _connected = true;
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     Thread.Sleep(1);
                 }
@@ -40,6 +43,10 @@ namespace SerialServer
             Run();
         }
 
+        public void Dispose()
+        {
+            _serialPort?.Dispose();
+        }
 
         public void Run()
         {
@@ -48,14 +55,14 @@ namespace SerialServer
                 try
                 {
                     int theByte = _serialPort.ReadByte();
-                    Console.WriteLine(theByte);
+                    Console.Write($"Reading byte {theByte} . ");
 
                     Button button = (Button)(theByte % 8);
                     ButtonMode buttonMode = theByte < 8 ? ButtonMode.Up : ButtonMode.Down;
 
-                    Console.WriteLine($"{button} = {buttonMode}");
+                    Console.Write($"{button} = {buttonMode}  . ");
 
-                    SetLamp(button, LampMode.On);
+                    SetLamp(button, buttonMode == ButtonMode.Down? LampMode.On : LampMode.Off);
                 }
                 catch (Exception ex)
                 {
@@ -64,7 +71,7 @@ namespace SerialServer
                     Thread.Sleep(1);
                 }
             }
-            Connect();
+            Connect(_serialPort.PortName);
         }
 
         public void SetLamp(Button lamp, LampMode lampmode)
@@ -74,8 +81,10 @@ namespace SerialServer
             byte[] b = new byte[] {data};
 
             _serialPort.Write(b, 0, b.Length);
-            Console.WriteLine($"SetLamp {lamp} {lampmode}   = {data}");
+            Console.WriteLine($"SetLamp {lamp} {lampmode} = {data}");
         }
+
+        
 
     }
 }

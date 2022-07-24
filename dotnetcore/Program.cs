@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.IO.Ports;
+using System.Management;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -10,11 +11,21 @@ namespace SerialServer
     {
         static void Main(string[] args)
         {
-           
-            var connector = new Connector("COM8");
-            connector.Connect();
-            Console.WriteLine("Finished");
-            Console.ReadLine();
+            string[] ports = SerialPort.GetPortNames();
+
+            Console.WriteLine("Serial ports connected:");
+            foreach (string port in ports)
+            {
+                Console.WriteLine(port);
+            }
+
+            if (ports.Length > 0)
+            {
+                var connector = new Connector();
+                connector.Connect(ports[0]);
+                Console.WriteLine("Finished");
+                Console.ReadLine();
+            }
         }
 
     }
